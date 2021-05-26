@@ -1,0 +1,11 @@
+# Distribution / packaging
+env/
+
+# virtualenv
+.env
+env/
+ENV/
+.vscode
+
+*.sqlite3
+*.db
