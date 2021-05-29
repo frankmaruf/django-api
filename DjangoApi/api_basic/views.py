@@ -1,3 +1,4 @@
+from functools import partial
 from django.shortcuts import render
 from rest_framework import status
 from rest_framework.views import APIView
@@ -6,9 +7,91 @@ from rest_framework.response import Response
 from .models import Article
 from .serializers import ArticleModelSerializer,ArticleSerializer
 from rest_framework.decorators import api_view
-
-
+from rest_framework import generics,mixins,status
+from rest_framework.authentication import TokenAuthentication,SessionAuthentication,BasicAuthentication
+from rest_framework.permissions import IsAuthenticated
+from rest_framework import viewsets
 # Create your views here.
+
+
+
+
+class ArticleSimpleViewSet(viewsets.GenericViewSet,mixins.DestroyModelMixin, mixins.ListModelMixin,mixins.UpdateModelMixin,mixins.RetrieveModelMixin,mixins.CreateModelMixin):
+    serializer_class = ArticleModelSerializer
+    queryset = Article.objects.all()
+
+
+class ArticleSimpleModelViewSet(viewsets.ModelViewSet):
+    serializer_class = ArticleModelSerializer
+    queryset = Article.objects.all()
+
+
+class ArticleViewSet(viewsets.ViewSet):
+    def list(self, request):
+        articles = Article.objects.all()
+        serializer = ArticleModelSerializer(articles, many=True)
+        return Response(serializer.data)
+
+    def create(self, request):
+        serializer = ArticleModelSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data)
+
+    def retrieve(self, request, pk=None):
+        article = Article.objects.get(pk=pk)
+        serializer = ArticleModelSerializer(article)
+        return Response(serializer.data)
+
+    def update(self, request, pk=None):
+        article = Article.objects.get(id=pk)
+        serializer = ArticleModelSerializer(instance=article,data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data)
+    def partial_update(self, request, pk=None):
+        article = Article.objects.get(id=pk)
+        serializer = ArticleModelSerializer(instance=article,data=request.data,partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data)
+
+    def destroy(self, request, pk=None):
+        article = Article.objects.get(id=pk)
+        article.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+
+
+
+class GenericAPIView(generics.GenericAPIView,
+mixins.ListModelMixin,
+mixins.CreateModelMixin,
+mixins.UpdateModelMixin,mixins.RetrieveModelMixin,
+mixins.DestroyModelMixin):
+    serializer_class = ArticleModelSerializer
+    queryset = Article.objects.all()
+    lookup_field = 'pk'
+    # authentication_classes = [SessionAuthentication,BasicAuthentication]
+    authentication_classes=[TokenAuthentication]
+    permission_classes = [IsAuthenticated]
+    def get(self, request,pk=None):
+        if pk:
+            return self.retrieve(request, pk)
+
+        return self.list(request)
+
+    def post(self, request):
+        return self.create(request)
+    def put(self, request,pk=None):
+        return self.partial_update(request,pk)
+    def delete(self, request, pk=None):
+        return self.destroy(request,pk)
+
+
+
+
 
 
 
